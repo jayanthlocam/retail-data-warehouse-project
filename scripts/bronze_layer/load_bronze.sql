@@ -53,7 +53,15 @@ LANGUAGE plpgsql
 AS $$
 DECLARE
 	v_rows BIGINT;
+	v_start_time TIMESTAMPTZ;
+    v_table_start_time TIMESTAMPTZ;
+    v_table_end_time TIMESTAMPTZ;
+    v_table_elapsed NUMERIC;
+    v_total_elapsed NUMERIC;
 BEGIN 
+	-- Start the overall procedure timer
+    v_start_time := clock_timestamp();
+	
 	--1.Validate the Input Parameters
 	IF p_source_crm_dir IS NULL OR BTRIM(p_source_crm_dir)='' THEN 
 		RAISE EXCEPTION 'CRM Directory Should not be empty';
@@ -74,6 +82,8 @@ BEGIN
 
 	--3.Load CRM tables
 	--A.load Cust_info
+	v_table_start_time := clock_timestamp();
+
 	EXECUTE FORMAT(
 		$copy$
 			COPY bronze.crm_cust_info
@@ -82,10 +92,15 @@ BEGIN
 		$copy$,
 		RTRIM(p_source_crm_dir,'/') || '/cust_info.csv'
 	);
+	v_table_end_time := clock_timestamp();
 	GET DIAGNOSTICS v_rows=ROW_COUNT;
-	RAISE NOTICE 'Loaded % records in crm_cust_info',v_rows;
+	v_table_elapsed := EXTRACT(
+        EPOCH FROM (v_table_end_time - v_table_start_time)
+    );
+	RAISE NOTICE 'Loaded % records into bronze.crm_cust_info in % seconds',v_rows, ROUND(v_table_elapsed, 3);
 	
 	--B.load prd_info
+	v_table_start_time := clock_timestamp();
 	EXECUTE FORMAT(
 		$copy$
 			COPY bronze.crm_prd_info
@@ -94,10 +109,17 @@ BEGIN
 		$copy$,
 		RTRIM(p_source_crm_dir,'/') || '/prd_info.csv'
 	);
-	GET DIAGNOSTICS v_rows=ROW_COUNT;
-	RAISE NOTICE 'Loaded % records in crm_prd_info',v_rows;
+	v_table_end_time := clock_timestamp();
+    GET DIAGNOSTICS v_rows = ROW_COUNT;
+
+    v_table_elapsed := EXTRACT(
+        EPOCH FROM (v_table_end_time - v_table_start_time)
+    );
+
+    RAISE NOTICE 'Loaded % records into bronze.crm_prd_info in % seconds',v_rows, ROUND(v_table_elapsed, 3);
 	
 	--C.Load sales_details
+	v_table_start_time := clock_timestamp();
 	EXECUTE FORMAT(
 		$copy$
 			COPY bronze.crm_sales_details 
@@ -106,11 +128,18 @@ BEGIN
 		$copy$,
 		RTRIM(p_source_crm_dir,'/') || '/sales_details.csv'
 	);
-	GET DIAGNOSTICS v_rows=ROW_COUNT;
-	RAISE NOTICE 'Loaded % records in crm_sales_details',v_rows;
+	 v_table_end_time := clock_timestamp();
+    GET DIAGNOSTICS v_rows = ROW_COUNT;
+
+    v_table_elapsed := EXTRACT(
+        EPOCH FROM (v_table_end_time - v_table_start_time)
+    );
+
+    RAISE NOTICE 'Loaded % records into bronze.crm_sales_details in % seconds',v_rows, ROUND(v_table_elapsed, 3);
 	
 	--4.Load ERP tables
 	--A.load cust_az12
+	v_table_start_time := clock_timestamp();
 	EXECUTE FORMAT(
 		$copy$
 			COPY bronze.erp_cust_az12
@@ -119,9 +148,17 @@ BEGIN
 		$copy$,
 		RTRIM(p_source_erp_dir,'/') || '/cust_az12.csv'
 	);
-	GET DIAGNOSTICS v_rows=ROW_COUNT;
-	RAISE NOTICE 'Loaded % records in erp_cust_az12',v_rows;
+	v_table_end_time := clock_timestamp();
+    GET DIAGNOSTICS v_rows = ROW_COUNT;
+
+    v_table_elapsed := EXTRACT(
+        EPOCH FROM (v_table_end_time - v_table_start_time)
+    );
+
+    RAISE NOTICE 'Loaded % records into bronze.erp_cust_az12 in % seconds',v_rows, ROUND(v_table_elapsed, 3);
+	
 	--B.load loc_a101
+	v_table_start_time := clock_timestamp();
 	EXECUTE FORMAT(
 		$copy$
 			COPY bronze.erp_loc_a101
@@ -130,9 +167,17 @@ BEGIN
 		$copy$,
 		RTRIM(p_source_erp_dir,'/') || '/loc_a101.csv'
 	);
-	GET DIAGNOSTICS v_rows=ROW_COUNT;
-	RAISE NOTICE 'Loaded % records in erp_loc_a101',v_rows;
+	v_table_end_time := clock_timestamp();
+    GET DIAGNOSTICS v_rows = ROW_COUNT;
+
+    v_table_elapsed := EXTRACT(
+        EPOCH FROM (v_table_end_time - v_table_start_time)
+    );
+
+    RAISE NOTICE 'Loaded % records into bronze.erp_loc_a101 in % seconds',v_rows, ROUND(v_table_elapsed, 3);
+	
 	--C.load px_cat_g1v2
+	v_table_start_time := clock_timestamp();
 	EXECUTE FORMAT(
 		$copy$
 			COPY bronze.erp_px_cat_g1v2
@@ -141,11 +186,24 @@ BEGIN
 		$copy$,
 		RTRIM(p_source_erp_dir,'/') || '/px_cat_g1v2.csv'
 	);
-	GET DIAGNOSTICS v_rows=ROW_COUNT;
-	RAISE NOTICE 'Loaded % records in px_cat_g1v2',v_rows;
+	v_table_end_time := clock_timestamp();
+    GET DIAGNOSTICS v_rows = ROW_COUNT;
+
+    v_table_elapsed := EXTRACT(
+        EPOCH FROM (v_table_end_time - v_table_start_time)
+    );
+
+    RAISE NOTICE 'Loaded % records into bronze.erp_px_cat_g1v2 in % seconds',v_rows, ROUND(v_table_elapsed, 3);
 
 	--5.Display Completion message
-	RAISE NOTICE 'Bronze layer loading Sucessfully Completed';
+	RAISE NOTICE 'Bronze Layer Loading Successfully Completed';
+
+    -- Calculate total procedure execution time
+    v_total_elapsed := EXTRACT(
+        EPOCH FROM (clock_timestamp() - v_start_time)
+    );
+
+    RAISE NOTICE 'Total Bronze Layer Execution Time: % seconds',ROUND(v_total_elapsed, 3);
 		
 END;
 $$
