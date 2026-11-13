@@ -1,142 +1,151 @@
 /*
-=========================================================
-Load Data into Bronze Layer
-=========================================================
+===============================================================================
+Stored Procedure: bronze.load_bronze
+===============================================================================
 
 Purpose:
-    Full refresh of all Bronze layer tables.
+    Loads source CRM and ERP data from CSV files into the Bronze layer tables
+    of the Retail Data Warehouse.
 
-Process:
-    1. Clear existing records from all six tables.
-    2. Load fresh data from source CSV files.
-    3. Commit all changes together.
+Procedure Parameters:
+    p_source_crm_dir : Directory path containing CRM source CSV files.
+    p_source_erp_dir : Directory path containing ERP source CSV files.
 
-Important:
-    Replace the file paths with your local CSV directory.
-    PostgreSQL server must have permission to read these files.
+Loading Process:
+    1. Validates the input directory paths to ensure they are not NULL or empty.
+    2. Truncates all existing records from the six Bronze layer tables.
+    3. Loads CRM data from the following source files:
+          - cust_info.csv
+          - prd_info.csv
+          - sales_details.csv
+    4. Loads ERP data from the following source files:
+          - cust_az12.csv
+          - loc_a101.csv
+          - px_cat_g1v2.csv
+    5. Captures the number of rows loaded into each table using GET DIAGNOSTICS.
+    6. Displays loading progress and completion messages using RAISE NOTICE.
 
-=========================================================
+Loading Strategy:
+    Full Refresh - Existing records are removed before loading fresh data.
+    All loading operations execute within the transaction of the CALL statement.
+    If an error occurs, the failed CALL is rolled back when the error is unhandled.
+
+Prerequisites:
+    - The datawarehouse database and Bronze schema must already exist.
+    - All six Bronze tables must be created before executing this procedure.
+    - Source CSV files must be available in the specified directories.
+    - The PostgreSQL server process must have permission to read the CSV files.
+    - CSV column order and data types must match the target table definitions.
+
+Execution:
+    CALL bronze.load_bronze(
+        'C:/path/to/source_crm',
+        'C:/path/to/source_erp'
+    );
+
+===============================================================================
 */
-
-BEGIN;
-
--- =============================================
--- 1. Clear Existing Records
--- =============================================
-
-TRUNCATE TABLE
-    bronze.crm_cust_info,
-    bronze.crm_prd_info,
-    bronze.crm_sales_details,
-    bronze.erp_cust_az12,
-    bronze.erp_loc_a101,
-    bronze.erp_px_cat_g1v2;
-
-
--- =============================================
--- 2. Load CRM Tables
--- =============================================
-
--- Load crm_cust_info
-COPY bronze.crm_cust_info (
-    cst_id,
-    cst_key,
-    cst_firstname,
-    cst_lastname,
-    cst_marital_status,
-    cst_gndr,
-    cst_create_date
+CREATE OR REPLACE PROCEDURE bronze.load_bronze(
+	p_source_crm_dir TEXT,
+	p_source_erp_dir TEXT
 )
-FROM 'C:/REPLACE_WITH_YOUR_LOCAL_DATA_DIRECTORY/source_crm/cust_info.csv'
-WITH (
-    FORMAT CSV,
-    HEADER TRUE,
-    DELIMITER ','
-);
+LANGUAGE plpgsql
+AS $$
+DECLARE
+	v_rows BIGINT;
+BEGIN 
+	--1.Validate the Input Parameters
+	IF p_source_crm_dir IS NULL OR BTRIM(p_source_crm_dir)='' THEN 
+		RAISE EXCEPTION 'CRM Directory Should not be empty';
+	END IF;
 
+	IF p_source_erp_dir IS NULL OR BTRIM(p_source_erp_dir)='' THEN 
+		RAISE EXCEPTION 'ERP Directory Should not be empty';
+	END IF;
+	
+	--2.Truncate Existing Records
+	TRUNCATE TABLE
+		bronze.crm_cust_info,
+	    bronze.crm_prd_info,
+	    bronze.crm_sales_details,
+	    bronze.erp_cust_az12,
+	    bronze.erp_loc_a101,
+	    bronze.erp_px_cat_g1v2;
 
--- Load crm_prd_info
-COPY bronze.crm_prd_info (
-    prd_id,
-    prd_key,
-    prd_name,
-    prd_cost,
-    prd_line,
-    prd_start_dt,
-    prd_end_dt
-)
-FROM 'C:/REPLACE_WITH_YOUR_LOCAL_DATA_DIRECTORY/source_crm/prd_info.csv'
-WITH (
-    FORMAT CSV,
-    HEADER TRUE,
-    DELIMITER ','
-);
+	--3.Load CRM tables
+	--A.load Cust_info
+	EXECUTE FORMAT(
+		$copy$
+			COPY bronze.crm_cust_info
+			FROM %L
+			WITH(FORMAT CSV,HEADER True,DELIMITER ',')
+		$copy$,
+		RTRIM(p_source_crm_dir,'/') || '/cust_info.csv'
+	);
+	GET DIAGNOSTICS v_rows=ROW_COUNT;
+	RAISE NOTICE 'Loaded % records in crm_cust_info',v_rows;
+	
+	--B.load prd_info
+	EXECUTE FORMAT(
+		$copy$
+			COPY bronze.crm_prd_info
+			FROM %L
+			WITH(FORMAT CSV,HEADER True,DELIMITER ',')
+		$copy$,
+		RTRIM(p_source_crm_dir,'/') || '/prd_info.csv'
+	);
+	GET DIAGNOSTICS v_rows=ROW_COUNT;
+	RAISE NOTICE 'Loaded % records in crm_prd_info',v_rows;
+	
+	--C.Load sales_details
+	EXECUTE FORMAT(
+		$copy$
+			COPY bronze.crm_sales_details 
+			FROM %L
+			WITH(FORMAT CSV,HEADER True,DELIMITER ',')
+		$copy$,
+		RTRIM(p_source_crm_dir,'/') || '/sales_details.csv'
+	);
+	GET DIAGNOSTICS v_rows=ROW_COUNT;
+	RAISE NOTICE 'Loaded % records in crm_sales_details',v_rows;
+	
+	--4.Load ERP tables
+	--A.load cust_az12
+	EXECUTE FORMAT(
+		$copy$
+			COPY bronze.erp_cust_az12
+			FROM %L
+			WITH(FORMAT CSV,HEADER True,DELIMITER ',')
+		$copy$,
+		RTRIM(p_source_erp_dir,'/') || '/cust_az12.csv'
+	);
+	GET DIAGNOSTICS v_rows=ROW_COUNT;
+	RAISE NOTICE 'Loaded % records in erp_cust_az12',v_rows;
+	--B.load loc_a101
+	EXECUTE FORMAT(
+		$copy$
+			COPY bronze.erp_loc_a101
+			FROM %L
+			WITH(FORMAT CSV,HEADER True,DELIMITER ',')
+		$copy$,
+		RTRIM(p_source_erp_dir,'/') || '/loc_a101.csv'
+	);
+	GET DIAGNOSTICS v_rows=ROW_COUNT;
+	RAISE NOTICE 'Loaded % records in erp_loc_a101',v_rows;
+	--C.load px_cat_g1v2
+	EXECUTE FORMAT(
+		$copy$
+			COPY bronze.erp_px_cat_g1v2
+			FROM %L
+			WITH(FORMAT CSV,HEADER True,DELIMITER ',')
+		$copy$,
+		RTRIM(p_source_erp_dir,'/') || '/px_cat_g1v2.csv'
+	);
+	GET DIAGNOSTICS v_rows=ROW_COUNT;
+	RAISE NOTICE 'Loaded % records in px_cat_g1v2',v_rows;
 
-
--- Load crm_sales_details
-COPY bronze.crm_sales_details (
-    sls_ord_num,
-    sls_prd_key,
-    sls_cust_id,
-    sls_order_dt,
-    sls_ship_dt,
-    sls_due_dt,
-    sls_sales,
-    sls_quantity,
-    sls_price
-)
-FROM 'C:/REPLACE_WITH_YOUR_LOCAL_DATA_DIRECTORY/source_crm/sales_details.csv'
-WITH (
-    FORMAT CSV,
-    HEADER TRUE,
-    DELIMITER ','
-);
-
-
--- =============================================
--- 3. Load ERP Tables
--- =============================================
-
--- Load erp_cust_az12
-COPY bronze.erp_cust_az12 (
-    cid,
-    bdate,
-    gen
-)
-FROM 'C:/REPLACE_WITH_YOUR_LOCAL_DATA_DIRECTORY/source_erp/cust_az12.csv'
-WITH (
-    FORMAT CSV,
-    HEADER TRUE,
-    DELIMITER ','
-);
-
-
--- Load erp_loc_a101
-COPY bronze.erp_loc_a101 (
-    cid,
-    cntry
-)
-FROM 'C:/REPLACE_WITH_YOUR_LOCAL_DATA_DIRECTORY/source_erp/loc_a101.csv'
-WITH (
-    FORMAT CSV,
-    HEADER TRUE,
-    DELIMITER ','
-);
-
-
--- Load erp_px_cat_g1v2
-COPY bronze.erp_px_cat_g1v2 (
-    id,
-    cat,
-    subcat,
-    maintenance
-)
-FROM 'C:/REPLACE_WITH_YOUR_LOCAL_DATA_DIRECTORY/source_erp/px_cat_g1v2.csv'
-WITH (
-    FORMAT CSV,
-    HEADER TRUE,
-    DELIMITER ','
-);
-
-
-COMMIT;
+	--5.Display Completion message
+	RAISE NOTICE 'Bronze layer loading Sucessfully Completed';
+		
+END;
+$$
