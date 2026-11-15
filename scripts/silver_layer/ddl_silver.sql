@@ -1,11 +1,43 @@
 /*
+===============================================================================
+Silver Layer - DDL Script
+===============================================================================
+Purpose:
+    Drop and recreate all Silver layer tables with the required structure.
+
+Execution:
+    1. Drop existing Silver tables.
+    2. Create new Silver tables.
+    3. Commit the transaction.
+
+NOTE:
+    - Existing Silver data will be permanently deleted.
+    - Run the Silver loading script after executing this DDL.
+    - Ensure Bronze tables are available before execution.
+===============================================================================
+*/
+/*
 ================================
-Create Tables in silver Layer
+Drop Existing Silver Tables
 ================================
 */
 
--- Create crm_cust_info table
-CREATE TABLE IF NOT EXISTS silver.crm_cust_info (
+DROP TABLE IF EXISTS silver.crm_cust_info;
+DROP TABLE IF EXISTS silver.crm_prd_info;
+DROP TABLE IF EXISTS silver.crm_sales_details;
+DROP TABLE IF EXISTS silver.erp_cust_az12;
+DROP TABLE IF EXISTS silver.erp_loc_a101;
+DROP TABLE IF EXISTS silver.erp_px_cat_g1v2;
+
+
+/*
+================================
+Create Tables in Silver Layer
+================================
+*/
+
+-- Create CRM Customer Information Table
+CREATE TABLE silver.crm_cust_info (
     cst_id INT,
     cst_key VARCHAR(50),
     cst_firstname VARCHAR(50),
@@ -13,55 +45,56 @@ CREATE TABLE IF NOT EXISTS silver.crm_cust_info (
     cst_marital_status VARCHAR(50),
     cst_gndr VARCHAR(50),
     cst_create_date DATE,
-	dwh_create_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    dwh_create_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- Create crm_prd_info table
-CREATE TABLE IF NOT EXISTS silver.crm_prd_info (
+-- Create CRM Product Information Table
+CREATE TABLE silver.crm_prd_info (
     prd_id INT,
+    prd_cat_id VARCHAR(50),
     prd_key VARCHAR(50),
     prd_name VARCHAR(50),
     prd_cost INT,
     prd_line VARCHAR(50),
     prd_start_dt DATE,
     prd_end_dt DATE,
-	dwh_create_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    dwh_create_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- Create crm_sales_details table
-CREATE TABLE IF NOT EXISTS silver.crm_sales_details (
+-- Create CRM Sales Details Table
+CREATE TABLE silver.crm_sales_details (
     sls_ord_num VARCHAR(50),
     sls_prd_key VARCHAR(50),
     sls_cust_id INT,
-    sls_order_dt INT,
-    sls_ship_dt INT,
-    sls_due_dt INT,
+    sls_order_dt DATE,
+    sls_ship_dt DATE,
+    sls_due_dt DATE,
     sls_sales INT,
     sls_quantity INT,
     sls_price INT,
-	dwh_create_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    dwh_create_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- Create erp_cust_az12 table
-CREATE TABLE IF NOT EXISTS silver.erp_cust_az12 (
+-- Create ERP Customer Information Table
+CREATE TABLE silver.erp_cust_az12 (
     cid VARCHAR(50),
     bdate DATE,
     gen VARCHAR(50),
-	dwh_create_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    dwh_create_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- Create erp_loc_a101 table
-CREATE TABLE IF NOT EXISTS silver.erp_loc_a101 (
+-- Create ERP Location Information Table
+CREATE TABLE silver.erp_loc_a101 (
     cid VARCHAR(50),
     cntry VARCHAR(50),
-	dwh_create_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    dwh_create_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- Create erp_px_cat_g1v2 table
-CREATE TABLE IF NOT EXISTS silver.erp_px_cat_g1v2 (
+-- Create ERP Product Category Information Table
+CREATE TABLE silver.erp_px_cat_g1v2 (
     id VARCHAR(50),
     cat VARCHAR(50),
     subcat VARCHAR(50),
     maintenance VARCHAR(50),
-	dwh_create_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    dwh_create_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
