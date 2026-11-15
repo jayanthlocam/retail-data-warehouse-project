@@ -1,11 +1,26 @@
+
+/*
+================================
+Drop Existing Bronze Tables
+================================
+*/
+
+DROP TABLE IF EXISTS bronze.crm_cust_info;
+DROP TABLE IF EXISTS bronze.crm_prd_info;
+DROP TABLE IF EXISTS bronze.crm_sales_details;
+DROP TABLE IF EXISTS bronze.erp_cust_az12;
+DROP TABLE IF EXISTS bronze.erp_loc_a101;
+DROP TABLE IF EXISTS bronze.erp_px_cat_g1v2;
+
+
 /*
 ================================
 Create Tables in Bronze Layer
 ================================
 */
 
--- Create crm_cust_info table
-CREATE TABLE IF NOT EXISTS bronze.crm_cust_info (
+-- Create CRM Customer Information Table
+CREATE TABLE bronze.crm_cust_info (
     cst_id INT,
     cst_key VARCHAR(50),
     cst_firstname VARCHAR(50),
@@ -15,19 +30,19 @@ CREATE TABLE IF NOT EXISTS bronze.crm_cust_info (
     cst_create_date DATE
 );
 
--- Create crm_prd_info table
-CREATE TABLE IF NOT EXISTS bronze.crm_prd_info (
+-- Create CRM Product Information Table
+CREATE TABLE bronze.crm_prd_info (
     prd_id INT,
     prd_key VARCHAR(50),
     prd_name VARCHAR(50),
     prd_cost INT,
     prd_line VARCHAR(50),
-    prd_start_dt DATE,
-    prd_end_dt DATE
+    prd_start_dt TIMESTAMP,
+    prd_end_dt TIMESTAMP
 );
 
--- Create crm_sales_details table
-CREATE TABLE IF NOT EXISTS bronze.crm_sales_details (
+-- Create CRM Sales Details Table
+CREATE TABLE bronze.crm_sales_details (
     sls_ord_num VARCHAR(50),
     sls_prd_key VARCHAR(50),
     sls_cust_id INT,
@@ -39,21 +54,21 @@ CREATE TABLE IF NOT EXISTS bronze.crm_sales_details (
     sls_price INT
 );
 
--- Create erp_cust_az12 table
-CREATE TABLE IF NOT EXISTS bronze.erp_cust_az12 (
+-- Create ERP Customer Information Table
+CREATE TABLE bronze.erp_cust_az12 (
     cid VARCHAR(50),
     bdate DATE,
     gen VARCHAR(50)
 );
 
--- Create erp_loc_a101 table
-CREATE TABLE IF NOT EXISTS bronze.erp_loc_a101 (
+-- Create ERP Location Information Table
+CREATE TABLE bronze.erp_loc_a101 (
     cid VARCHAR(50),
     cntry VARCHAR(50)
 );
 
--- Create erp_px_cat_g1v2 table
-CREATE TABLE IF NOT EXISTS bronze.erp_px_cat_g1v2 (
+-- Create ERP Product Category Information Table
+CREATE TABLE bronze.erp_px_cat_g1v2 (
     id VARCHAR(50),
     cat VARCHAR(50),
     subcat VARCHAR(50),
