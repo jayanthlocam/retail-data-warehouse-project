@@ -17,6 +17,7 @@ Grain:
 ==================================================
 */
 
+
 CREATE OR REPLACE VIEW gold.fact_sales AS
 
 SELECT
@@ -34,6 +35,11 @@ FROM silver.crm_sales_details AS sd
 
 LEFT JOIN gold.dim_products AS dp
     ON sd.sls_prd_key = dp.product_number
+   AND sd.sls_order_dt >= dp.start_date
+   AND (
+       sd.sls_order_dt <= dp.end_date
+       OR dp.end_date IS NULL
+   )
 
 LEFT JOIN gold.dim_customer AS dc
     ON sd.sls_cust_id = dc.customer_id;
